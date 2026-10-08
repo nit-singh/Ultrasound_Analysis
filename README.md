@@ -1,216 +1,208 @@
-```markdown
-# Ultrasound-Analysis
+# Ultrasound Analysis
 
-A full-stack application for breast ultrasound image analysis using deep learning, featuring classification and segmentation with a modern React frontend and FastAPI backend.
+A full-stack web app that classifies breast ultrasound images and segments the tumour region using deep learning. Upload an image from the dashboard, and the app returns a diagnosis class and, for abnormal scans, a segmentation mask.
+
+Trained on the **BUSI** (Breast Ultrasound Images) dataset.
+
+> **Disclaimer:** This is a research and learning project. It is not a medical device and must not be used for clinical diagnosis.
 
 ---
 
-## 📁 Project Structure
+## How It Works
+
+The backend runs a two-stage inference pipeline:
+
+1. **Classification:** a ResNet-18 model predicts one of three classes: `benign`, `malignant` or `normal`.
+2. **Segmentation:** if the image is not `normal`, an Attention U-Net produces a binary mask of the lesion region.
 
 ```
-Ultrasound-Analysis/
+Image upload ──> ResNet-18 classifier ──> normal?   ──> return class
+                                      └─> abnormal ──> Attention U-Net ──> return class + mask
+```
+
+The mask is resized to the original image dimensions and returned as a base64-encoded PNG, which the dashboard displays alongside the prediction.
+
+---
+
+## Features
+
+- Two-stage ML pipeline (classification, then segmentation only when needed)
+- Image upload with instant preview and client-side validation (image type, 10 MB limit)
+- REST inference API built with FastAPI
+- JWT-based sign-up and login with bcrypt password hashing
+- Responsive React UI styled with Tailwind CSS
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS 4, React Router, Lucide icons |
+| ML API | Python, FastAPI, Uvicorn, PyTorch, torchvision, Pillow, NumPy |
+| Auth API | Node.js, Express, JSON Web Tokens, bcryptjs |
+| Models | ResNet-18 (classification), Attention U-Net (segmentation) |
+
+---
+
+## Architecture
+
+The app runs as three local services:
+
+| Service | Port | Purpose |
+|---|---|---|
+| React frontend | `5173` | UI: landing page, login, sign-up, dashboard |
+| FastAPI ML service | `8000` | Runs the classification and segmentation models |
+| Express auth service | `3000` | Handles user registration and login |
+
+---
+
+## Project Structure
+
+```
+Ultrasound_Analysis/
 ├── backend/
-│   ├── __pycache__/
 │   ├── controllers/
-│   │   └── authController.js
+│   │   └── authController.js     # Register and login logic
 │   ├── ml/
-│   │   ├── __pycache__/
-│   │   ├── best_attention_unet_busi.pth
-│   │   ├── ml_api.py
-│   │   ├── resnet.pth
-│   │   └── resnet.py
+│   │   ├── ml_api.py             # FastAPI app and inference pipeline
+│   │   ├── resnet.py             # ResNet-18 definition and training script
+│   │   ├── resnet.pth            # Classifier weights
+│   │   └── best_attention_unet_busi.pth   # Segmentation weights
 │   ├── models/
-│   │   └── userModel.js
-│   ├── node_modules/
+│   │   └── userModel.js          # PostgreSQL user queries
 │   ├── routes/
-│   │   └── auth.js
-│   ├── .env
-│   ├── .gitignore
-│   ├── db.js
-│   ├── package-lock.json
-│   ├── package.json
-│   └── server.js
-├── node_modules/
-├── public/
-│   └── vite.svg
+│   │   └── auth.js               # /api/auth routes
+│   ├── db.js                     # PostgreSQL connection pool
+│   └── server.js                 # Express entry point
 ├── src/
-│   ├── assets/
 │   ├── components/
-│   │   ├── Dashboard.jsx
+│   │   ├── Dashboard.jsx         # Upload, preview and results
 │   │   ├── Hero.jsx
 │   │   ├── Login.jsx
 │   │   ├── Navbar.jsx
 │   │   └── Signup.jsx
-│   ├── App.jsx
-│   ├── index.css
-│   ├── main.jsx
-│   └── ...
-├── .gitignore
-├── eslint.config.js
+│   ├── App.jsx                   # Routes
+│   └── main.jsx
 ├── index.html
-├── package-lock.json
 ├── package.json
-├── README.md
 └── vite.config.js
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### 1. Backend Setup
+### Prerequisites
 
-- **Python 3.8+** required.
-- From the `backend/ml/` directory (or main backend dir if files are reorganized), install dependencies:
-    ```
-    pip install fastapi uvicorn pillow torch torchvision numpy scikit-learn python-multipart bcrypt psycopg2-binary supabase
-    ```
-- Place your trained model weights (`resnet.pth` and `best_attention_unet_busi.pth`) in the `ml/` folder.
-- Start FastAPI server:
-    ```
-    uvicorn ml_api:app --reload --host 0.0.0.0 --port 8000
-    ```
-- The `/segment` endpoint will be available at [http://localhost:8000/segment](http://localhost:8000/segment).
+- Python 3.8+
+- Node.js 18+
 
-### 2. Backend Node/Express Auth Service (Optional)
+### 1. Clone the repository
 
-- Install dependencies in `backend/`:
-    ```
-    npm install
-    ```
-- Configure `.env` with your DB info (Supabase/Postgres).
-- Start the Express server:
-    ```
-    node server.js
-    ```
-- The authentication routes will be available at [http://localhost:3000/api/auth/](http://localhost:3000/api/auth/).
-
-### 3. Frontend Setup
-
-- **Node.js 16+** recommended.
-- Navigate to root (where `package.json` is found):
-    ```
-    npm install
-    npm run dev
-    ```
-- The app runs by default at [http://localhost:5173](http://localhost:5173).
-
-### 4. File Upload and Analysis Workflow
-
-- Select an ultrasound image on the Dashboard page.
-- **Preview:** Your image appears before analysis.
-- Click "Analyze" to send the image to the backend ML pipeline.
-- **Result:** Shows classification (`normal`, `benign`, `malignant`) and (if not `normal`) the segmentation mask.
-
----
-
-## 💡 Key Features
-
-- **Two-stage pipeline:**  
-  - ResNet classifier predicts class.
-  - Attention U-Net segments the region of interest if abnormal.
-
-- **Live upload preview:**  
-  Your image appears instantly upon selection.
-
-- **Express/JWT authentication:**  
-  Secure user sign-up/login using Node and Supabase/Postgres.
-
-- **Tailwind-styled React frontend:**  
-  Clean, responsive UI with navigation.
-
----
-
-## ⚙️ Backend Dependencies
-
-- fastapi
-- uvicorn
-- torch
-- torchvision
-- pillow
-- numpy
-- scikit-learn
-- python-multipart
-- bcrypt
-- psycopg2-binary
-- supabase
-
-Install via:
-```
-pip install fastapi uvicorn torch torchvision pillow numpy scikit-learn python-multipart bcrypt psycopg2-binary supabase
+```bash
+git clone https://github.com/nit-singh/Ultrasound_Analysis.git
+cd Ultrasound_Analysis
 ```
 
----
+### 2. Start the ML service
 
-## 🛠️ Frontend Dependencies
-
-Specified in `package.json`; key libraries include:
-- react, react-dom, react-router-dom  
-- lucide-react (for icons)  
-- tailwindcss  
-- dotenv  
-- axios  
-- bcryptjs  
-- classnames  
-
-Install all with:
+```bash
+cd backend/ml
+pip install fastapi uvicorn python-multipart torch torchvision pillow numpy scikit-learn
+uvicorn ml_api:app --reload --port 8000
 ```
+
+Run this from `backend/ml/`, because the API loads the model weights from that folder.
+
+### 3. Start the auth service
+
+In a new terminal:
+
+```bash
+cd backend
 npm install
 ```
 
----
+Create a `.env` file in `backend/`:
 
-## 📝 Environment Configuration
-
-Configure your database and secrets in `.env` for backend Express:
-```
+```env
 PORT=3000
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_HOST=your_supabase_endpoint
-DB_PORT=5432
-DB_DATABASE=your_db_name
 JWT_SECRET=your_jwt_secret
 ```
 
----
+Then start the server:
 
-## 🧩 Troubleshooting
-
-| Problem                   | Action                                          |
-|---------------------------|-------------------------------------------------|
-| Port 8000/3000 in use     | Free it, or use a different port                |
-| CORS errors               | Ensure FastAPI CORS middleware is enabled       |
-| Auth not working          | Check DB connection, JWT secret, body parsing   |
-| ML mask not shown         | Confirm correct image upload and file format    |
-| FastAPI not responding    | Launch with `--host 0.0.0.0`                    |
-
----
-
-## 🤝 Contributing
-
-1. Fork the repo and create your branch.
-2. Commit changes and open a PR.
-3. For any issues, bug reports, or suggestions, use the issues tab.
-
----
-
-## 📣 Notes
-
-- For production, use proper SSL, JWT secret management, and CORS policies.
-- Never commit private keys or credentials.
-
----
-
-## 📧 Contact
-
-For help or feedback, open an issue in the repository or reach out to the project maintainer.
-
----
+```bash
+npm start
 ```
-Copy, edit, and paste this into your `README.md` at the project root for an out-of-the-box guide tailored to your folder structure and workflow.
 
-[1] https://pplx-res.cloudinary.com/image/private/user_uploads/52545704/303a25ec-3c72-437c-9702-7d501d4b9393/image.jpg
-[2] https://pplx-res.cloudinary.com/image/private/user_uploads/52545704/1bcef41e-74aa-4ca0-a56b-5d4904e97245/image.jpg
-[3] https://pplx-res.cloudinary.com/image/private/user_uploads/52545704/0cae60ff-37d2-4b87-992c-ac954f95968c/image.jpg
-[4] https://pplx-res.cloudinary.com/image/private/user_uploads/52545704/2a699bde-0c61-4199-9da5-87c735999486/image.jpg
+### 4. Start the frontend
+
+In a new terminal, from the project root:
+
+```bash
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173** in your browser.
+
+---
+
+## API Reference
+
+### ML service (port 8000)
+
+#### `POST /segment`
+
+Classifies an ultrasound image and returns a segmentation mask for abnormal cases.
+
+**Request:** `multipart/form-data` with a single field `file` (the image).
+
+**Response:**
+
+```json
+{
+  "prediction": "malignant",
+  "segmentation": "<base64-encoded PNG mask>"
+}
+```
+
+`segmentation` is `null` when the prediction is `normal`.
+
+### Auth service (port 3000)
+
+| Method | Endpoint | Body | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | `{ name, email, password }` | Creates a user and returns a JWT |
+| `POST` | `/api/auth/login` | `{ email, password }` | Returns a JWT for valid credentials |
+| `GET` | `/api/health` | none | Health check |
+
+Tokens expire after 24 hours.
+
+---
+
+## Model Details
+
+| | Classifier | Segmenter |
+|---|---|---|
+| Architecture | ResNet-18 | Attention U-Net (3 encoder / 3 decoder blocks) |
+| Input | RGB, 224 × 224, normalised | Grayscale, 256 × 256 |
+| Output | `benign` / `malignant` / `normal` | Binary mask (threshold 0.5) |
+
+---
+
+## Current Limitations
+
+- User accounts are stored in memory, so they reset when the auth server restarts. A PostgreSQL user model (`models/userModel.js`, `db.js`) is included but not yet connected.
+- Service URLs are hard-coded to `localhost`.
+- Inference runs on CPU.
+
+---
+
+## Contributing
+
+1. Fork the repository and create a feature branch.
+2. Commit your changes and open a pull request.
+3. Report bugs or suggest features through the Issues tab.
